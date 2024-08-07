@@ -6,13 +6,18 @@ from PyQt6.QtWidgets import (
     QMessageBox, QLabel, QGridLayout
 )
 import sys
-import sqlite3
+import mysql.connector
+
 
 class DatabaseConnection:
-    def __init__(self,database_file = 'database.db'):
-        self.database_file = database_file
+    def __init__(self,host='localhost', user='root', password='pythoncourse', database='school'):
+        self.host = host
+        self.user = user
+        self.password = password
+        self.database = database
     def connect(self):
-        connection = sqlite3.connect(self.database_file)
+        connection = mysql.connector.connect(host=self.host, user=self.user, 
+                                             password=self.password, database=self.database)
         return connection
 
 class MainWindow(QMainWindow):
@@ -89,7 +94,9 @@ class MainWindow(QMainWindow):
 
     def load_data(self):
         connection = DatabaseConnection().connect()
-        result = connection.execute("SELECT * FROM students")
+        cursor = connection.cursor()
+        connection.execute("SELECT * FROM students")
+        result = cursor.fetchall()
         self.table.setRowCount(0)
         for row_number, row_data in enumerate(result):
             self.table.insertRow(row_number)
@@ -137,7 +144,7 @@ class DeleteDialog(QDialog):
     def delete_student(self):
         connection = DatabaseConnection().connect()
         cursor = connection.cursor()
-        cursor.execute('DELETE FROM students WHERE id = ?', (main_window.table.item(main_window.table.currentRow(), 0).text(),))
+        cursor.execute('DELETE FROM students WHERE id = %s', (main_window.table.item(main_window.table.currentRow(), 0).text(),))
         connection.commit()
         cursor.close()
         connection.close()
@@ -184,9 +191,9 @@ class EditDialog(QDialog):
         self.setLayout(layout)
 
     def update_student(self):
-        connection = sqlite3.connect('database.db')
+        connection = DatabaseConnection.connect('database.db')
         cursor = connection.cursor()
-        cursor.execute('UPDATE students SET name = ?, course = ?, mobile = ? WHERE id = ?', 
+        cursor.execute('UPDATE students SET name = %s, course = %s, mobile = %s WHERE id = %s', 
                        (self.student_name.text(), self.course.currentText(), self.mobile.text(), main_window.table.item(main_window.table.currentRow(), 0).text()))
         connection.commit()
         cursor.close()
@@ -231,7 +238,7 @@ class InsertDialog(QDialog):
         if name and course and mobile:
             connection = DatabaseConnection().connect()
             cursor = connection.cursor()
-            cursor.execute('INSERT INTO students (name, course, mobile) VALUES (?, ?, ?)', (name, course, mobile))
+            cursor.execute('INSERT INTO students (name, course, mobile) VALUES (%s, %s, %s)', (name, course, mobile))
             connection.commit()
             cursor.close()
             connection.close()
@@ -267,8 +274,8 @@ class SearchDialog(QDialog):
         if name:
             connection = DatabaseConnection().connect()
             cursor = connection.cursor()
-            cursor.execute('SELECT * FROM students WHERE name = ?', (name,))
-            result = cursor.fetchone()
+            cursor.execute('SELECT * FROM students WHERE name = %s', (name,))
+            result = cursor.fetchall()
             cursor.close()
             connection.close()
 
